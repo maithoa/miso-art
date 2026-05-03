@@ -1,5 +1,6 @@
 import { useMostLoved } from '../hooks/useMostLoved'
 import ProductCard from './ProductCard'
+import { normaliseProduct } from '../lib/products'
 
 // Medal labels for top-3 ranking positions
 const RANK_LABELS = ['🥇', '🥈', '🥉']
@@ -65,21 +66,11 @@ export default function MostLoved() {
       {/* Horizontal scroll on small screens, wraps on larger */}
       <div className="flex gap-4 overflow-x-auto pb-2 sm:grid sm:grid-cols-2 lg:grid-cols-3 sm:overflow-visible">
         {products.map((product, index) => {
-          // Normalise view row to the shape ProductCard expects
-          const cardProduct = {
-            // ProductCard uses product.id internally for keys etc.
-            id: product.product_id,
-            product_id: product.product_id,
-            name: product.name,
-            price: product.price,
-            image_url: product.image_url,
-            is_available: product.is_available,
-            tags: product.tags,
-            total_sold: product.total_sold,
-          }
+          // Delegate all field mapping to normaliseProduct — single source of truth
+          const cardProduct = normaliseProduct(product)
 
           return (
-            <div key={product.product_id} className="relative min-w-[220px] sm:min-w-0">
+            <div key={cardProduct.id} className="relative min-w-[220px] sm:min-w-0">
               {/* Show rank medal for top-3 */}
               {index < 3 && (
                 <span

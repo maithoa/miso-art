@@ -2,6 +2,24 @@ import { useState } from 'react'
 import { useCart } from '../context/CartContext'
 import { formatEUR } from '../lib/currency'
 
+/**
+ * ProductCard
+ *
+ * Renders a single product in a card layout with an add-to-cart action.
+ *
+ * @param {Object}      props
+ * @param {Object}      props.product              - The product to display.
+ * @param {string}      props.product.id           - Unique product identifier (UUID string).
+ * @param {string}      props.product.name         - Display name shown as the card heading.
+ * @param {string}      [props.product.description] - Optional short description; hidden when empty.
+ * @param {number}      props.product.price        - Price in integer euro cents (e.g. 350 = €3.50).
+ * @param {string|null} [props.product.image_url]  - Absolute URL for the product image; shows
+ *                                                    a placeholder when null or undefined.
+ * @param {string[]}    [props.product.tags]       - Optional list of tag labels (e.g. ['vegan']);
+ *                                                    hidden when empty or absent.
+ * @param {boolean}     props.product.is_available - When false the card is dimmed and the
+ *                                                    add-to-cart button is disabled.
+ */
 export default function ProductCard({ product }) {
   const { addItem } = useCart()
   const [added, setAdded] = useState(false)
