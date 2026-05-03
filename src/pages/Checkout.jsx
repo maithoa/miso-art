@@ -1,8 +1,8 @@
-import { useState, useEffect, useContext } from 'react';
+import { useState, useEffect } from 'react';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
-import { CartContext } from '../context/CartContext';
-import { supabase } from '../supabase';
+import { useCart } from '../context/CartContext';
+import { supabase } from '../lib/supabase';
 
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 
@@ -51,7 +51,7 @@ function CheckoutForm({ clientSecret }) {
 }
 
 export default function Checkout() {
-  const { items } = useContext(CartContext);
+  const { items } = useCart();
   const [clientSecret, setClientSecret] = useState(null);
   const [error, setError] = useState(null);
 

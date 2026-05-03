@@ -70,7 +70,7 @@ export default function ThankYou() {
         <h1 className="text-3xl font-bold text-green-600">Order Confirmed!</h1>
         <p className="text-lg">Thank you, <strong>{order.customer_name}</strong>!</p>
         <p className="text-gray-600">
-          Order total: <strong>£{(order.total / 100).toFixed(2)}</strong>
+          Order total: <strong>€{(order.total / 100).toFixed(2)}</strong>
         </p>
         <p className="text-sm text-gray-400">Order ID: {order.id}</p>
       </div>
