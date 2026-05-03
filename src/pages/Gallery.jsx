@@ -1,5 +1,7 @@
 import { useProducts } from '../hooks/useProducts'
 import ProductCard from '../components/ProductCard'
+import MostLoved from '../components/MostLoved'
+import SeasonalBanner from '../components/SeasonalBanner'
 
 function SkeletonCard() {
   return (
@@ -25,6 +27,12 @@ export default function Gallery() {
   return (
     <main className="px-4 py-8 max-w-6xl mx-auto">
       <h1 className="text-2xl font-bold text-gray-900 mb-6">Our Products</h1>
+
+      {/* Seasonal banner — non-critical, renders null when no active banner */}
+      <SeasonalBanner />
+
+      {/* Most loved products section — renders null when no data */}
+      <MostLoved />
 
       {/* Error state */}
       {error && (

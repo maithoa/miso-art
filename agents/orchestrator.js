@@ -98,6 +98,7 @@ async function runSprint(issues, prd) {
       - Supabase client is at src/lib/supabase.js — import as: import { supabase } from '../lib/supabase' (NOT '../supabase')
       - Supabase Storage bucket for product images is named 'product-images' (public read, admin write)
       - Admin order status transitions (payment_confirmed→order_confirmed→sent) happen directly from the browser via an RLS UPDATE policy on orders that checks profiles.is_admin = true. No separate Edge Function needed for admin status updates — keep it simple for MVP.
+      - useMostLoved aggregation: use Option A — a Postgres view named 'most_loved_products' (GROUP BY product_id, SUM quantity, filtered to orders with status IN payment_confirmed/order_confirmed/sent, TOP 3). Query it via supabase.from('most_loved_products'). Dev 2 creates the migration file.
     `,
   });
 
