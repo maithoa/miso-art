@@ -1,49 +1,50 @@
 ---
 name: work-session-lessons-learnt
-description: Scans the current session's conversation and produces a compact markdown summary of the user's pain points and how each was resolved. Use when the user asks for a session summary, lessons learnt, what we covered, or wants to document what they learned.
+description: Scans the current session's conversation and produces a compact markdown summary of what the user learned — things they asked about, didn't know, or needed guidance on. Use when the user asks for a session summary, lessons learnt, what we covered, or wants to document what they learned today.
 ---
 
 # Work Session Lessons Learnt
 
 ## What this produces
 
-A compact markdown document with two bullet lists per pain:
-- **Pain** — what the user was stuck on or asked about
-- **Resolution** — how it was fixed (one line)
+A compact markdown document written from the **user's perspective** — not a bug log, not a dev diary. Each entry is one thing the user didn't know at the start of the session and now knows.
 
-## How to detect resolution
+## How to detect a learning moment
 
-**Direct resolution** — user asked once, you gave an instruction or fix, no follow-up on that topic. Mark as: `→ [what you told them]`
+Look for:
+- Direct questions the user asked ("how do I...", "what is...", "why can't I...")
+- Things the user tried that didn't work and needed explanation
+- Concepts you had to explain before the user could proceed
+- Setup steps the user needed to be walked through
 
-**Iterative resolution** — user asked, you responded, they had follow-up questions on the same topic before it was resolved. Mark as: `→ [what finally worked]`
+**Signal that it's resolved:** user asked, you explained, no confused follow-up — or follow-ups led to a clear answer and the user moved on.
 
-**Unresolved** — user raised something that was never fully closed. Mark as: `⏳ still open`
+**Signal it's still open:** user asked, you gave steps, but they hit another blocker and it's not yet working end-to-end.
 
 ## Output format
 
 ```markdown
-# Session Lessons Learnt — YYYY-MM-DD
+# What I Learned — YYYY-MM-DD
 
-## Pains & How They Were Resolved
+## Lessons
 
-- **[short pain label]**
-  _What happened:_ one sentence describing what the user was stuck on.
-  _Resolved by:_ one sentence describing the fix or answer.
+- **[Topic]**
+  _I didn't know:_ one sentence on what was unclear.
+  _Now I know:_ one or two sentences — the actual answer or mental model.
 
-- **[short pain label]**
-  _What happened:_ ...
-  _Resolved by:_ ...
+- **[Topic]**
+  ...
 
-## Still Open
+## Still figuring out
 
-- **[label]** — what's pending or unresolved.
+- **[Topic]** — what's still unclear or blocked.
 ```
 
 ## Rules
 
-- One bullet per distinct pain. Do not combine unrelated pains.
-- Keep each entry to 2 lines max (What happened + Resolved by).
-- Use the user's own words where possible for the pain label.
-- Do not include things that went smoothly with no friction — only real blockers or questions.
-- Do not pad. If only 3 things caused friction, write 3 bullets.
-- Save the output as a `.md` file in `output/lessons/` named `YYYY-MM-DD-HHmm.md`. Create the directory if it doesn't exist.
+- Write in first person from the user's point of view ("I didn't know", "Now I know").
+- One bullet per concept. Do not group unrelated things.
+- Keep it to what the user genuinely didn't know — skip anything they already understood.
+- No code snippets unless a specific command is the core of the lesson.
+- Do not include internal agent/dev errors that the user never saw or asked about.
+- Save the output as a `.md` file in `output/lessons/` named `YYYY-MM-DD-lessons.md`. Create the directory if it doesn't exist.
