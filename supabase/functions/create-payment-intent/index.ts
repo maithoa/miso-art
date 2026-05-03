@@ -85,8 +85,9 @@ serve(async (req: Request) => {
     return json({ error: 'Failed to fetch products' }, 500);
   }
 
-  const productMap = new Map(
-    (products ?? []).map((p: { id: string; price: number; is_available: boolean }) => [p.id, p]),
+  type ProductRow = { id: string; price: number; is_available: boolean };
+  const productMap = new Map<string, ProductRow>(
+    (products ?? []).map((p: ProductRow) => [p.id, p]),
   );
 
   // --- (2) missing product check ---
