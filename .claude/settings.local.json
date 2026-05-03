@@ -10,7 +10,20 @@
       "Bash(npm run *)",
       "Bash(git -C /Users/thoanguyen/Documents/UpSkills/Learn-Claude-Code/miso-art status)",
       "Bash(git -C /Users/thoanguyen/Documents/UpSkills/Learn-Claude-Code/miso-art log --oneline)",
-      "Bash(git *)"
+      "Bash(git *)",
+      "Bash(npx vitest *)",
+      "Skill(browser-use)",
+      "Bash(pip show *)",
+      "Bash(uvx browser-use *)",
+      "Bash(echo \"Dev server PID: $!\")",
+      "Read(//tmp/**)",
+      "Bash(PYENV_VERSION=3.12.0 browser-use doctor)",
+      "Bash(PYENV_VERSION=3.12.0 browser-use open *)",
+      "Bash(PYENV_VERSION=3.12.0 browser-use screenshot /tmp/miso-gallery.png)",
+      "Bash(PYENV_VERSION=3.12.0 browser-use state *)",
+      "Bash(PYENV_VERSION=3.12.0 browser-use click *)",
+      "Bash(PYENV_VERSION=3.12.0 browser-use screenshot /tmp/miso-cart.png)",
+      "Bash(PYENV_VERSION=3.12.0 browser-use screenshot /tmp/miso-checkout.png)"
     ]
   }
 }
