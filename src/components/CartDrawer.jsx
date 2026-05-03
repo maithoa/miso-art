@@ -2,16 +2,27 @@ import { useEffect, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useCart } from '../context/CartContext'
 
-// Format cents to EUR string e.g. "12.50 €"
 function formatEUR(cents) {
   return new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(cents / 100)
 }
 
-function CartItem({ item, onRemove }) {
+function QtyButton({ onClick, disabled, children, ariaLabel }) {
   return (
-    <li className="flex items-start gap-3 py-4 border-b border-gray-100 last:border-0">
-      {/* Thumbnail */}
-      <div className="w-16 h-16 flex-shrink-0 rounded-md overflow-hidden bg-gray-100">
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={ariaLabel}
+      className="w-7 h-7 flex items-center justify-center rounded-full border border-[#e5e5e5] text-[#1a1a1a] text-base font-bold transition-colors hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-[#ff90e8]"
+    >
+      {children}
+    </button>
+  )
+}
+
+function CartItem({ item, onRemove, onUpdateQty }) {
+  return (
+    <li className="flex items-start gap-3 py-4 border-b border-[#e5e5e5] last:border-0">
+      <div className="w-16 h-16 flex-shrink-0 rounded-xl overflow-hidden bg-gray-100">
         {item.image_url ? (
           <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" />
         ) : (
@@ -20,18 +31,37 @@ function CartItem({ item, onRemove }) {
       </div>
 
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-gray-900 truncate">{item.name}</p>
-        <p className="text-sm text-gray-500 mt-0.5">
-          {item.quantity} × {formatEUR(item.price)}
-        </p>
+        <p className="text-sm font-bold text-[#1a1a1a] truncate">{item.name}</p>
+        <p className="text-xs text-gray-500 mt-0.5">{formatEUR(item.price)} each</p>
+
+        {/* Quantity controls */}
+        <div className="flex items-center gap-2 mt-2">
+          <QtyButton
+            onClick={() => onUpdateQty(item.id, item.quantity - 1)}
+            disabled={item.quantity === 1}
+            ariaLabel={`Decrease quantity of ${item.name}`}
+          >
+            −
+          </QtyButton>
+          <span className="text-sm font-semibold text-[#1a1a1a] w-5 text-center" aria-live="polite">
+            {item.quantity}
+          </span>
+          <QtyButton
+            onClick={() => onUpdateQty(item.id, item.quantity + 1)}
+            ariaLabel={`Increase quantity of ${item.name}`}
+          >
+            +
+          </QtyButton>
+        </div>
+
         {/* Line total */}
-        <p className="text-sm font-semibold text-gray-800 mt-0.5">{formatEUR(item.price * item.quantity)}</p>
+        <p className="text-sm font-bold text-[#1a1a1a] mt-1">{formatEUR(item.price * item.quantity)}</p>
       </div>
 
       <button
         onClick={() => onRemove(item.id)}
         aria-label={`Remove ${item.name} from cart`}
-        className="flex-shrink-0 p-1 rounded hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors"
+        className="flex-shrink-0 p-1 rounded-full hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors"
       >
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -42,35 +72,24 @@ function CartItem({ item, onRemove }) {
 }
 
 export default function CartDrawer({ isOpen, onClose }) {
-  const { items, total, removeItem } = useCart()
+  const { items, total, removeItem, updateQuantity } = useCart()
   const navigate = useNavigate()
   const drawerRef = useRef(null)
 
-  // Close on Escape key
   useEffect(() => {
     if (!isOpen) return
-    const handleKeyDown = (e) => {
-      if (e.key === 'Escape') onClose()
-    }
+    const handleKeyDown = (e) => { if (e.key === 'Escape') onClose() }
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [isOpen, onClose])
 
-  // Prevent body scroll while drawer is open
   useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = 'hidden'
-    } else {
-      document.body.style.overflow = ''
-    }
+    document.body.style.overflow = isOpen ? 'hidden' : ''
     return () => { document.body.style.overflow = '' }
   }, [isOpen])
 
   const handleOverlayClick = useCallback((e) => {
-    // Close only if click landed on the overlay, not inside the drawer panel
-    if (drawerRef.current && !drawerRef.current.contains(e.target)) {
-      onClose()
-    }
+    if (drawerRef.current && !drawerRef.current.contains(e.target)) onClose()
   }, [onClose])
 
   const handleCheckout = () => {
@@ -80,7 +99,6 @@ export default function CartDrawer({ isOpen, onClose }) {
 
   return (
     <>
-      {/* Overlay */}
       <div
         aria-hidden={!isOpen}
         onClick={handleOverlayClick}
@@ -89,23 +107,22 @@ export default function CartDrawer({ isOpen, onClose }) {
         }`}
       />
 
-      {/* Drawer panel */}
       <div
         ref={drawerRef}
         role="dialog"
         aria-modal="true"
         aria-label="Shopping cart"
-        className={`fixed top-0 right-0 z-50 h-full w-full max-w-sm bg-white shadow-2xl flex flex-col transform transition-transform duration-300 ease-in-out ${
+        className={`fixed top-0 right-0 z-50 h-full w-full max-w-sm bg-white flex flex-col transform transition-transform duration-300 ease-in-out ${
           isOpen ? 'translate-x-0' : 'translate-x-full'
         }`}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-4 border-b border-gray-200">
-          <h2 className="text-lg font-semibold text-gray-900">Your Cart</h2>
+        <div className="flex items-center justify-between px-5 py-4 border-b border-[#e5e5e5]">
+          <h2 className="text-base font-bold text-[#1a1a1a]">Your Cart</h2>
           <button
             onClick={onClose}
             aria-label="Close cart"
-            className="p-2 rounded-full hover:bg-gray-100 text-gray-500 hover:text-gray-700 transition-colors"
+            className="p-2 rounded-full hover:bg-gray-100 text-gray-400 hover:text-[#1a1a1a] transition-colors"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -113,8 +130,8 @@ export default function CartDrawer({ isOpen, onClose }) {
           </button>
         </div>
 
-        {/* Items list */}
-        <div className="flex-1 overflow-y-auto px-4">
+        {/* Items */}
+        <div className="flex-1 overflow-y-auto px-5">
           {items.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-center gap-3 py-16">
               <span className="text-5xl">🛒</span>
@@ -123,22 +140,27 @@ export default function CartDrawer({ isOpen, onClose }) {
           ) : (
             <ul>
               {items.map((item) => (
-                <CartItem key={item.id} item={item} onRemove={removeItem} />
+                <CartItem
+                  key={item.id}
+                  item={item}
+                  onRemove={removeItem}
+                  onUpdateQty={updateQuantity}
+                />
               ))}
             </ul>
           )}
         </div>
 
-        {/* Footer — only shown when cart has items */}
+        {/* Footer */}
         {items.length > 0 && (
-          <div className="border-t border-gray-200 px-4 py-4 space-y-3">
+          <div className="border-t border-[#e5e5e5] px-5 py-4 space-y-3">
             <div className="flex items-center justify-between">
-              <span className="text-base font-medium text-gray-700">Total</span>
-              <span className="text-base font-bold text-gray-900">{formatEUR(total)}</span>
+              <span className="text-sm text-gray-500 font-medium">Total</span>
+              <span className="text-base font-bold text-[#1a1a1a]" aria-live="polite">{formatEUR(total)}</span>
             </div>
             <button
               onClick={handleCheckout}
-              className="w-full bg-gray-900 text-white py-3 rounded-lg font-semibold hover:bg-gray-700 active:scale-95 transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-600"
+              className="w-full bg-[#ff90e8] text-[#1a1a1a] py-3 rounded-full font-bold hover:opacity-80 active:scale-95 transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#ff90e8]"
             >
               Go to Checkout
             </button>

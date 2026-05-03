@@ -1,6 +1,5 @@
 import React from 'react'
 
-// Renders a pill for each available tag; active pills are visually distinct
 export function TagPills({ tags, selectedTags, onToggle }) {
   if (!tags || tags.length === 0) return null
 
@@ -13,13 +12,11 @@ export function TagPills({ tags, selectedTags, onToggle }) {
             key={tag}
             onClick={() => onToggle(tag)}
             aria-pressed={isActive}
-            className={
-              `rounded-full px-3 py-1 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-300 ${
-                isActive
-                  ? 'bg-indigo-600 text-white shadow-md'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`
-            }
+            className={`rounded-full px-3 py-1 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-[#ff90e8]/60 ${
+              isActive
+                ? 'bg-[#1a1a1a] text-white'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
           >
             {tag}
           </button>
@@ -28,10 +25,10 @@ export function TagPills({ tags, selectedTags, onToggle }) {
       {selectedTags.length > 0 && (
         <button
           onClick={() => selectedTags.forEach((t) => onToggle(t))}
-          className="rounded-full px-3 py-1 text-sm font-medium text-red-500 hover:text-red-700 underline"
+          className="rounded-full px-3 py-1 text-sm font-medium text-gray-400 hover:text-[#1a1a1a] underline"
           aria-label="Clear all tag filters"
         >
-          Clear filters
+          Clear
         </button>
       )}
     </div>
