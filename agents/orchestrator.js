@@ -124,15 +124,19 @@ async function runSprint(issues, prd) {
 
   // Interview insight: Promise.all = true parallelism.
   // Both agents run simultaneously — this is why multi-agent is faster.
+  // For UI-heavy issues the Tech Lead may flag dev1 as "uiDesigner".
+  const dev1Role = plan.dev1.role === "uiDesigner" ? ROLES.uiDesigner : ROLES.devFrontend;
+  const dev2Role = plan.dev2.role === "codeReviewer" ? ROLES.codeReviewer : ROLES.devBackend;
+
   const [dev1Raw, dev2Raw] = await Promise.all([
     runAgent({
-      label: "Dev 1 (Frontend)",
-      systemPrompt: ROLES.devFrontend,
+      label: plan.dev1.role === "uiDesigner" ? "UI Designer" : "Dev 1 (Frontend)",
+      systemPrompt: dev1Role,
       userMessage: buildDevPrompt(plan.dev1, plan.shared_types, existingCode),
     }),
     runAgent({
-      label: "Dev 2 (Backend)",
-      systemPrompt: ROLES.devBackend,
+      label: plan.dev2.role === "codeReviewer" ? "Code Reviewer" : "Dev 2 (Backend)",
+      systemPrompt: dev2Role,
       userMessage: buildDevPrompt(plan.dev2, plan.shared_types, existingCode),
     }),
   ]);

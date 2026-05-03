@@ -8,7 +8,7 @@ const ISSUES_DIR = "./.scratch/miso-art-mvp/issues";
 const PRD_PATH = "./.scratch/miso-art-mvp/PRD.md";
 
 // Manually track done issues here as you complete them
-const DONE_ISSUES = ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11"];
+const DONE_ISSUES = ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"];
 
 export function loadProjectContext() {
   const prd = fs.readFileSync(PRD_PATH, "utf8");
@@ -62,6 +62,10 @@ const ISSUE_META = {
   "11": { mode: "AFK",  blockers: ["01", "08"] },
   "12": { mode: "AFK",  blockers: ["07", "11"] },
   "13": { mode: "HITL", blockers: ["01","02","03","04","05","06","07","08","09","10","11","12"] },
+  "14": { mode: "AFK",  blockers: ["05"] },           // cart drawer
+  "15": { mode: "AFK",  blockers: ["14"] },           // quantity selector in drawer
+  "16": { mode: "AFK",  blockers: ["01"] },           // seed 20 products
+  "17": { mode: "AFK",  blockers: ["14"] },           // gumroad UI redesign
 };
 
 export function getReadyIssues(issues) {
