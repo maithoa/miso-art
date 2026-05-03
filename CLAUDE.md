@@ -28,7 +28,46 @@ You are the **Tech Lead** of the Miso Art engineering team.
 
 ## Project Overview
 
-**Miso Art** is a single-artist handmade postcard webshop — an MVP built as an agentic development learning exercise. Full spec is in `./scratch/miso-art-mvp/PRD.md`. The project is pre-scaffolded: no `src/` exists yet. The implementation has been pre-planned and break down to issues in  `.scratch/miso-art-mvp/issues/`
+**Miso Art** is a single-artist handmade postcard webshop — an MVP built as an agentic development learning exercise. Full spec is in `.scratch/miso-art-mvp/PRD.md`. Issues are tracked in `.scratch/miso-art-mvp/issues/`. Completed issue numbers are listed in `agents/context.js` → `DONE_ISSUES`.
+
+## Implementation Status
+
+### ✅ Done (all committed)
+| Issue | What |
+|---|---|
+| 01 | Supabase schema + migrations |
+| 02 | React + Vite scaffold |
+| 03 | Product gallery (grid, cards) |
+| 04 | Tag filter + search bar |
+| 05 | CartContext (localStorage persistence) |
+| 06 | Checkout form + `create-payment-intent` Edge Function |
+| 07 | Stripe webhook + ThankYou page |
+| 08 | Admin auth (AdminRoute, Login) |
+| 09 | Admin order queue |
+| 10 | Admin products page |
+| 11 | Admin banners page |
+| 12 | Most Loved section + Seasonal Banner |
+| 14 | Cart drawer (slide-in, NavBar) |
+| 15 | Quantity controls in cart drawer |
+| 16 | 20 seed products in DB |
+| 17 | Gumroad-style UI redesign |
+
+### ⏳ Pending
+| Issue | What | Notes |
+|---|---|---|
+| 13 | AWS deployment | HITL — manual Amplify/CloudFront setup |
+| — | Checkout E2E working | Blocked: see "Known Issues" below |
+
+### 🗄️ Supabase Setup (hosted, completed 2026-05-03)
+- All SQL migrations run: `001_tables.sql`, `002_rls.sql`, `002_seasonal_banners.sql`, `003_admin_rls_policies.sql`, `003_seed.sql`, `004_seed_extended.sql`
+- `product-images` storage bucket created (public read)
+- Edge Functions deployed: `create-payment-intent`, `fulfill-order`
+- Secrets set: `STRIPE_SECRET_KEY`. `STRIPE_WEBHOOK_SECRET` set after webhook created in Stripe dashboard.
+
+### ⚠️ Known Issues
+**Checkout: "Failed to send a request to the Edge Function"**
+- Root cause under investigation. The `VITE_SUPABASE_ANON_KEY` is in the new `sb_publishable_` format (not the legacy `eyJ...` JWT format). Curl test confirms the Edge Function IS deployed but returns `UNAUTHORIZED_INVALID_JWT_FORMAT` when the publishable key is sent as a Bearer token.
+- Next step: Check Supabase dashboard for a legacy JWT anon key (`eyJ...` format), or confirm that supabase-js v2.105+ handles the new key format correctly with Edge Functions.
 
 ## Tech Stack
 
@@ -46,6 +85,8 @@ You are the **Tech Lead** of the Miso Art engineering team.
 npm run dev       # start dev server
 npm run build     # production build (outputs to dist/)
 npm run lint      # lint
+npx vitest run    # run all tests (66 tests, 7 files)
+npx vitest run src/path/to/file.test.jsx  # run single test file
 ```
 
 ## Architecture
@@ -133,17 +174,25 @@ profiles
 | `create-payment-intent` | Frontend on checkout submit | Validate cart (is_available), recalculate total, write pending order + order_items, create Stripe PaymentIntent, return clientSecret |
 | `fulfill-order` | Stripe webhook `payment_intent.succeeded` | Verify Stripe signature, flip order status to `payment_confirmed` |
 
-### Checkout form
+### Checkout flow (two-step)
 
-Fields collected above the Stripe PaymentElement (in order):
+Step 1 — Customer info form (fields in order):
 1. Full name
 2. Email
 3. Street address
-4. City
-5. Postal code
-6. Country
+4. City + Postal code (side by side)
+5. Country
 
-All passed to `create-payment-intent` on submit.
+On submit: calls `create-payment-intent` Edge Function with:
+```json
+{
+  "items": [{ "product_id": "uuid", "quantity": 1 }],
+  "customer": { "name", "email", "street", "city", "postal_code", "country" }
+}
+```
+Note: cart items must be mapped from `{ id, ... }` to `{ product_id, quantity }` — the Edge Function rejects the full cart shape.
+
+Step 2 — Stripe PaymentElement mounts with the returned `clientSecret`. User enters card details, clicks "Pay now" → `stripe.confirmPayment()` → redirect to `/thank-you?payment_intent=pi_xxx`.
 
 ### Order statuses
 
@@ -184,9 +233,46 @@ STRIPE_WEBHOOK_SECRET=
 
 ## Development Notes
 
-- Stripe test card: `4242 4242 4242 4242`
+- Stripe test card: `4242 4242 4242 4242`, any future expiry, any CVC
 - Hosted Supabase only — no local CLI/Docker setup
 - Build one component at a time — this is a learning-focused repo
 - **Hosting:** Use AWS Amplify for Vercel-like auto-deploy (connects to GitHub, handles SPA routing automatically), or S3 + CloudFront for manual setup. Both are free at MVP scale with no commercial use restrictions.
 - SPA routing caveat: S3 + CloudFront requires a CloudFront custom error page (404 → `index.html`, 200) so React Router paths don't 404 on direct URL access. Amplify handles this automatically.
 - Day 2 scope: PostHog events (`product_viewed`, `add_to_cart`, `checkout_started`, `order_placed`), cancel order + Stripe refund, OAuth providers
+
+## Agent System
+
+The multi-agent orchestrator at `agents/orchestrator.js` runs: **Tech Lead → plans sprint → Dev 1 (frontend) + Dev 2 (backend) in parallel**.
+
+```bash
+node agents/orchestrator.js       # run all ready issues
+node agents/orchestrator.js 14    # force a specific issue number
+```
+
+Key files:
+- `agents/context.js` — update `DONE_ISSUES` array after each issue completes
+- `agents/roles.js` — system prompts for each role (techLead, devFrontend, devBackend, uiDesigner, codeReviewer)
+- `agents/worker.js` — Anthropic API call wrapper (`max_tokens: 16000` — do not reduce)
+
+Role routing: Tech Lead assigns `role: "uiDesigner"` to Dev 1 for visual issues; `role: "codeReviewer"` to Dev 2 when Dev 1 needs review instead of parallel backend work.
+
+## Testing Pattern
+
+Tests use Vitest + React Testing Library. Key patterns established:
+
+**localStorage mock** (jsdom doesn't implement `.clear()`):
+```js
+let store = {}
+const localStorageMock = {
+  getItem: (k) => store[k] ?? null,
+  setItem: (k, v) => { store[k] = String(v) },
+  removeItem: (k) => { delete store[k] },
+  clear: () => { store = {} },
+}
+beforeEach(() => { store = {}; vi.stubGlobal('localStorage', localStorageMock) })
+afterEach(() => vi.unstubAllGlobals())
+```
+
+**Components using `useNavigate`** must be wrapped in `<MemoryRouter>` in tests.
+
+**Vitest config** excludes `supabase/functions/**` to prevent Deno-style imports from breaking the test runner (`vite.config.js → test.exclude`).

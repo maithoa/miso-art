@@ -88,7 +88,7 @@ A single-artist handmade postcard webshop built on React + Supabase + Stripe. Sh
 - **Gallery** — fetches all products once via `useProducts` hook. Filters the in-memory array on every search/tag change. No re-fetch on filter. Tag pills are derived from the union of all `tags` arrays across fetched products.
 - **ProductCard** — pure display component. Receives product data as props, emits `onAddToCart`. Greyed out + disabled when `is_available = false`.
 - **CartDrawer** — reads from `CartContext`. Slide-out panel with quantity controls and a checkout CTA.
-- **CheckoutForm** — collects name, email, street, city, postal code, country. On submit, calls `create-payment-intent` Edge Function, then mounts Stripe `PaymentElement` with the returned `clientSecret`.
+- **CheckoutForm** — two-step flow. Step 1: collects name, email, street, city, postal code, country. On "Continue to payment" submit, calls `create-payment-intent` Edge Function with `{ items: [{product_id, quantity}], customer }` — cart items must be mapped from CartContext shape (`id`) to Edge Function shape (`product_id`). Step 2: mounts Stripe `<Elements>` with the returned `clientSecret`, renders `<PaymentElement>`, user confirms payment.
 - **ThankYouPage** — reads `payment_intent` from URL query param. Polls Supabase `orders` table every 2 seconds for `status = 'payment_confirmed'`. Stops after 30 seconds and shows a fallback message.
 - **AdminRoute** — wrapper component that checks Supabase session and `profiles.is_admin`. Renders a loading state while checking, then either renders children or redirects to `/login`.
 - **AdminOrders** — lists orders with date, customer name, status badge, total. Clicking a row navigates to `/admin/orders/:id`.
