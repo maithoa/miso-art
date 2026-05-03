@@ -5,7 +5,8 @@
       "Bash(npm install *)",
       "Bash(npm test *)",
       "Bash(node *)",
-      "Bash(python3 -c ' *)"
+      "Bash(python3 -c ' *)",
+      "Bash(sort -t- -k2 -n)"
     ]
   }
 }

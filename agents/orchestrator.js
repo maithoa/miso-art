@@ -150,9 +150,11 @@ async function runSprint(issues, prd) {
 
   if (dev2Error) {
     console.error("⚠️  Dev 2 output could not be parsed:", dev2Error);
-  } else if (issues[1]) {
+  } else {
     writeAgentFiles(dev2Files);
-    await commitIssue(issues[1].number, issues[1].file, dev2Files);
+    // When only one issue runs, both devs work on it — commit to the same issue
+    const dev2Issue = issues[1] ?? issues[0];
+    await commitIssue(dev2Issue.number, dev2Issue.file, dev2Files);
   }
 
   // ── Step 4: Log everything ────────────────────
