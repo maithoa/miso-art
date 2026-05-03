@@ -67,6 +67,11 @@ const ISSUE_META = {
   "16": { mode: "AFK",  blockers: ["01"] },           // seed 20 products
   "17": { mode: "AFK",  blockers: ["14"] },           // gumroad UI redesign
   "18": { mode: "AFK",  blockers: [] },               // fix checkout Edge Function auth
+  "19": { mode: "AFK",  blockers: [] },               // normaliseProduct shape
+  "20": { mode: "AFK",  blockers: ["19"] },           // filterProducts pure function
+  "21": { mode: "AFK",  blockers: [] },               // useAdminMutation hook
+  "22": { mode: "AFK",  blockers: [] },               // slim CartContext to {id, quantity}
+  "23": { mode: "AFK",  blockers: ["21"] },           // useToast error surfacing
 };
 
 export function getReadyIssues(issues) {
