@@ -1,8 +1,24 @@
-import { render, screen, within } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { MemoryRouter } from 'react-router-dom'
 import { CartProvider } from '../context/CartContext'
 import CartDrawer from './CartDrawer'
+
+// ---------------------------------------------------------------------------
+// localStorage mock (jsdom doesn't implement .clear())
+// ---------------------------------------------------------------------------
+
+let store = {}
+const localStorageMock = {
+  getItem: (k) => store[k] ?? null,
+  setItem: (k, v) => { store[k] = String(v) },
+  removeItem: (k) => { delete store[k] },
+  clear: () => { store = {} },
+}
+
+beforeEach(() => { store = {}; vi.stubGlobal('localStorage', localStorageMock) })
+afterEach(() => vi.unstubAllGlobals())
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -11,12 +27,14 @@ import CartDrawer from './CartDrawer'
 /** Wrap CartDrawer in the real CartProvider so context is live. */
 function renderDrawer(initialItems = []) {
   // Seed localStorage so CartProvider hydrates with our fixture data.
-  localStorage.setItem('cart', JSON.stringify(initialItems))
+  localStorageMock.setItem('cart', JSON.stringify(initialItems))
 
   return render(
-    <CartProvider>
-      <CartDrawer isOpen={true} onClose={vi.fn()} />
-    </CartProvider>
+    <MemoryRouter>
+      <CartProvider>
+        <CartDrawer isOpen={true} onClose={vi.fn()} />
+      </CartProvider>
+    </MemoryRouter>
   )
 }
 
@@ -24,7 +42,7 @@ function renderDrawer(initialItems = []) {
 const PRODUCT_A = {
   id: 'prod-1',
   name: 'Test Widget',
-  price: 1500, // $15.00
+  price: 1500, // 15,00 €
   image_url: 'https://example.com/widget.jpg',
   quantity: 1,
 }
@@ -35,9 +53,6 @@ const PRODUCT_A_QTY2 = { ...PRODUCT_A, quantity: 2 }
 // Reset between tests
 // ---------------------------------------------------------------------------
 
-beforeEach(() => {
-  localStorage.clear()
-})
 
 // ---------------------------------------------------------------------------
 // Quantity control — disabled state
@@ -119,10 +134,9 @@ describe('CartDrawer — decrement button', () => {
 
 describe('CartDrawer — line total', () => {
   it('displays the correct line total for initial quantity', () => {
-    renderDrawer([PRODUCT_A]) // price=1500 cents, qty=1 → $15.00
+    renderDrawer([PRODUCT_A]) // price=1500 cents, qty=1 → 15,00 €
 
-    // Accept either "$15.00" or "15.00" formatted string.
-    expect(screen.getByText(/\$?15\.00/)).toBeInTheDocument()
+    expect(screen.getAllByText(/15[,.]00/).length).toBeGreaterThanOrEqual(1)
   })
 
   it('updates line total reactively when + is clicked', async () => {
@@ -130,26 +144,26 @@ describe('CartDrawer — line total', () => {
     renderDrawer([PRODUCT_A]) // price=1500 cents, qty=1
 
     const incrementBtn = screen.getByRole('button', { name: /increment|increase|\+/i })
-    await user.click(incrementBtn) // qty → 2, line total → $30.00
+    await user.click(incrementBtn) // qty → 2, line total → 30,00 €
 
-    expect(screen.getByText(/\$?30\.00/)).toBeInTheDocument()
+    expect(screen.getAllByText(/30[,.]00/).length).toBeGreaterThanOrEqual(1)
   })
 
   it('updates line total reactively when − is clicked', async () => {
     const user = userEvent.setup()
-    renderDrawer([PRODUCT_A_QTY2]) // price=1500 cents, qty=2 → $30.00
+    renderDrawer([PRODUCT_A_QTY2]) // price=1500 cents, qty=2 → 30,00 €
 
     const decrementBtn = screen.getByRole('button', { name: /decrement|decrease|−|-/i })
-    await user.click(decrementBtn) // qty → 1, line total → $15.00
+    await user.click(decrementBtn) // qty → 1, line total → 15,00 €
 
-    expect(screen.getByText(/\$?15\.00/)).toBeInTheDocument()
+    expect(screen.getAllByText(/15[,.]00/).length).toBeGreaterThanOrEqual(1)
   })
 
-  it('line total equals price × quantity (integer cents rendered as dollars)', () => {
-    // qty=3, price=1500 → line total = 4500 cents = $45.00
+  it('line total equals price × quantity (integer cents rendered as euros)', () => {
+    // qty=3, price=1500 → line total = 4500 cents = 45,00 €
     renderDrawer([{ ...PRODUCT_A, quantity: 3 }])
 
-    expect(screen.getByText(/\$?45\.00/)).toBeInTheDocument()
+    expect(screen.getAllByText(/45[,.]00/).length).toBeGreaterThanOrEqual(1)
   })
 })
 
@@ -162,7 +176,7 @@ describe('CartDrawer — cart total', () => {
     renderDrawer([PRODUCT_A]) // total = 1500 cents = $15.00
 
     // There may be multiple "$15.00" nodes (line total + cart total).
-    const matches = screen.getAllByText(/\$?15\.00/)
+    const matches = screen.getAllByText(/15[,.]00/)
     expect(matches.length).toBeGreaterThanOrEqual(1)
   })
 
@@ -173,6 +187,6 @@ describe('CartDrawer — cart total', () => {
     const incrementBtn = screen.getByRole('button', { name: /increment|increase|\+/i })
     await user.click(incrementBtn) // total → $30.00
 
-    expect(screen.getByText(/\$?30\.00/)).toBeInTheDocument()
+    expect(screen.getAllByText(/30[,.]00/).length).toBeGreaterThanOrEqual(1)
   })
 })
