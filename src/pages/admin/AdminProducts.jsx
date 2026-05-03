@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import AdminRoute from '../../components/AdminRoute';
 import ProductForm from '../../components/ProductForm';
 import { supabase } from '../../lib/supabase';
+import { formatEUR } from '../../lib/currency';
 
 function AdminProductsInner() {
   const [products, setProducts] = useState([]);
@@ -115,7 +116,7 @@ function AdminProductsInner() {
                       </div>
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-right text-gray-900">€{(product.price / 100).toFixed(2)}</td>
+                  <td className="px-4 py-3 text-right text-gray-900">{formatEUR(product.price)}</td>
                   <td className="px-4 py-3 text-center">
                     {/* inline toggle — calls supabase immediately */}
                     <button onClick={() => toggleAvailability(product)}

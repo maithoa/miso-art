@@ -3,12 +3,9 @@ import { loadStripe } from '@stripe/stripe-js'
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js'
 import { useCart } from '../context/CartContext'
 import { supabase } from '../lib/supabase'
+import { formatEUR } from '../lib/currency'
 
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY)
-
-function formatEUR(cents) {
-  return new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(cents / 100)
-}
 
 function OrderSummary({ items }) {
   const total = items.reduce((sum, i) => sum + i.price * i.quantity, 0)

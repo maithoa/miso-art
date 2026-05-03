@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import AdminRoute from '../../components/AdminRoute';
 import StatusBadge from '../../components/StatusBadge';
 import { supabase } from '../../lib/supabase';
+import { formatEUR } from '../../lib/currency';
 
 function AdminOrderDetailInner() {
   const { id } = useParams();
@@ -115,9 +116,9 @@ function AdminOrderDetailInner() {
                 <tr key={item.id}>
                   <td className="py-2 text-gray-900">{item.products?.name || item.product_id}</td>
                   <td className="py-2 text-center text-gray-700">{item.quantity}</td>
-                  <td className="py-2 text-right text-gray-700">€{(item.price_at_purchase / 100).toFixed(2)}</td>
+                  <td className="py-2 text-right text-gray-700">{formatEUR(item.price_at_purchase)}</td>
                   <td className="py-2 text-right font-medium text-gray-900">
-                    €{((item.price_at_purchase * item.quantity) / 100).toFixed(2)}
+                    {formatEUR(item.price_at_purchase * item.quantity)}
                   </td>
                 </tr>
               ))}
@@ -125,7 +126,7 @@ function AdminOrderDetailInner() {
             <tfoot className="border-t">
               <tr>
                 <td colSpan={3} className="pt-3 text-right font-semibold text-gray-700">Total</td>
-                <td className="pt-3 text-right font-bold text-gray-900">€{(order.total / 100).toFixed(2)}</td>
+                <td className="pt-3 text-right font-bold text-gray-900">{formatEUR(order.total)}</td>
               </tr>
             </tfoot>
           </table>

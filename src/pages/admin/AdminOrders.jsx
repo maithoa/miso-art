@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import AdminRoute from '../../components/AdminRoute';
 import StatusBadge from '../../components/StatusBadge';
 import { supabase } from '../../lib/supabase';
+import { formatEUR } from '../../lib/currency';
 
 function AdminOrdersInner() {
   const [orders, setOrders] = useState([]);
@@ -64,7 +65,7 @@ function AdminOrdersInner() {
                   <td className="px-4 py-3 text-gray-900">{order.customer_name}</td>
                   <td className="px-4 py-3"><StatusBadge status={order.status} /></td>
                   <td className="px-4 py-3 text-right font-medium text-gray-900">
-                    €{(order.total / 100).toFixed(2)}
+                    {formatEUR(order.total)}
                   </td>
                 </tr>
               ))}

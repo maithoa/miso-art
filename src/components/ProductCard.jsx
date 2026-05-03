@@ -1,9 +1,6 @@
 import { useState } from 'react'
 import { useCart } from '../context/CartContext'
-
-function formatEUR(cents) {
-  return new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(cents / 100)
-}
+import { formatEUR } from '../lib/currency'
 
 export default function ProductCard({ product }) {
   const { addItem } = useCart()

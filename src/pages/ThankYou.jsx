@@ -1,13 +1,10 @@
 import { useEffect, useState, useRef } from 'react'
 import { useSearchParams, Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { formatEUR } from '../lib/currency'
 
 const POLL_INTERVAL_MS = 2000
 const TIMEOUT_MS = 30000
-
-function formatEUR(cents) {
-  return new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(cents / 100)
-}
 
 export default function ThankYou() {
   const [searchParams] = useSearchParams()

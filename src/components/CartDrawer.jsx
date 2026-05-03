@@ -1,10 +1,7 @@
 import { useEffect, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useCart } from '../context/CartContext'
-
-function formatEUR(cents) {
-  return new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(cents / 100)
-}
+import { formatEUR } from '../lib/currency'
 
 function QtyButton({ onClick, disabled, children, ariaLabel }) {
   return (

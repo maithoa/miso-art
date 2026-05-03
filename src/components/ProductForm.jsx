@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
+import { parseCents } from '../lib/currency';
 
 export default function ProductForm({ product, onClose, onSaved }) {
   const isEdit = Boolean(product?.id);
@@ -52,8 +53,7 @@ export default function ProductForm({ product, onClose, onSaved }) {
         imageUrl = publicData.publicUrl;
       }
 
-      // convert EUR input to integer cents
-      const priceCents = Math.round(parseFloat(priceEur) * 100);
+      const priceCents = parseCents(priceEur);
       const payload = { name, description, price: priceCents, tags, is_available: isAvailable, image_url: imageUrl };
 
       let result;
