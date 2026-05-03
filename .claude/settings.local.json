@@ -25,5 +25,11 @@
       "Bash(PYENV_VERSION=3.12.0 browser-use screenshot /tmp/miso-cart.png)",
       "Bash(PYENV_VERSION=3.12.0 browser-use screenshot /tmp/miso-checkout.png)"
     ]
+  },
+  
+  "teammateMode": "tmux",
+  "env": {
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
   }
+  
 }
