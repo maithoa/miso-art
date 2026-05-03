@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { supabase } from '../supabase';
+import { supabase } from '../lib/supabase';
 
 const POLL_INTERVAL_MS = 2000;
 const TIMEOUT_MS = 30000;

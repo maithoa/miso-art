@@ -95,6 +95,9 @@ async function runSprint(issues, prd) {
       - Stripe keys are not needed locally; Edge Functions read STRIPE_SECRET_KEY from Supabase dashboard at runtime
       - CartContext already built at src/context/CartContext.jsx — items shape: [{ id, name, price (cents), image_url, quantity }]
       - stripe_payment_id ordering: use Option B — validate products first, then create Stripe PaymentIntent, then insert order row with stripe_payment_id = pi.id, then insert order_items. A dangling PI (if DB insert fails) is harmless as it expires in 24h and never charges the customer.
+      - Supabase client is at src/lib/supabase.js — import as: import { supabase } from '../lib/supabase' (NOT '../supabase')
+      - Supabase Storage bucket for product images is named 'product-images' (public read, admin write)
+      - Admin order status transitions (payment_confirmed→order_confirmed→sent) happen directly from the browser via an RLS UPDATE policy on orders that checks profiles.is_admin = true. No separate Edge Function needed for admin status updates — keep it simple for MVP.
     `,
   });
 

@@ -3,14 +3,14 @@ import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import AdminRoute from './AdminRoute';
 
-vi.mock('../supabase', () => ({
+vi.mock('../lib/supabase', () => ({
   supabase: {
     auth: { getSession: vi.fn() },
     from: vi.fn(),
   },
 }));
 
-import { supabase } from '../supabase';
+import { supabase } from '../lib/supabase';
 
 function renderAdminRoute() {
   return render(

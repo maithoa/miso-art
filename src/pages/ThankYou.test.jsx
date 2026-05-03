@@ -4,13 +4,13 @@ import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
 import ThankYou from './ThankYou';
 
 // Mock supabase
-vi.mock('../supabase', () => ({
+vi.mock('../lib/supabase', () => ({
   supabase: {
     from: vi.fn(),
   },
 }));
 
-import { supabase } from '../supabase';
+import { supabase } from '../lib/supabase';
 
 const PAYMENT_INTENT_ID = 'pi_test_123';
 
