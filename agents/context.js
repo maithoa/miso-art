@@ -66,6 +66,7 @@ const ISSUE_META = {
   "15": { mode: "AFK",  blockers: ["14"] },           // quantity selector in drawer
   "16": { mode: "AFK",  blockers: ["01"] },           // seed 20 products
   "17": { mode: "AFK",  blockers: ["14"] },           // gumroad UI redesign
+  "18": { mode: "AFK",  blockers: [] },               // fix checkout Edge Function auth
 };
 
 export function getReadyIssues(issues) {
