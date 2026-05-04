@@ -55,3 +55,55 @@ export function normaliseProduct(row) {
     is_available: row.is_available,
   }
 }
+
+/**
+ * filterProducts
+ *
+ * Filters a product array by an optional text query and/or an optional tag.
+ *
+ * Rules:
+ *  - query: case-insensitive substring match against name, description, or any element of tags.
+ *  - tag:   exact-match (case-sensitive) against any element of tags.
+ *  - Both conditions are ANDed when both are provided.
+ *  - Empty string, null, or undefined for either param means "no filter for that dimension".
+ *
+ * @param {Array<{ id: string, name: string, description: string, price: number, image_url: string|null, tags: string[], is_available: boolean }>} products
+ * @param {{ query?: string|null, tag?: string|null }} filters
+ * @returns {Array}
+ */
+export function filterProducts(products, { query, tag } = {}) {
+  // Treat empty string the same as no filter — normalise once here rather than in every condition
+  const normalisedQuery = (query ?? '').trim()
+  const normalisedTag   = (tag   ?? '').trim()
+
+  const hasQuery = normalisedQuery.length > 0
+  const hasTag   = normalisedTag.length   > 0
+
+  // Short-circuit: nothing to filter — return the original array reference for perf
+  if (!hasQuery && !hasTag) return products
+
+  const lowerQuery = normalisedQuery.toLowerCase()
+
+  return products.filter((product) => {
+    // Guard: if a product is somehow malformed, exclude it rather than crash
+    if (!product) return false
+
+    const tags = Array.isArray(product.tags) ? product.tags : []
+
+    if (hasQuery) {
+      const inName        = (product.name        ?? '').toLowerCase().includes(lowerQuery)
+      const inDescription = (product.description ?? '').toLowerCase().includes(lowerQuery)
+      // Check every tag element — a match on any one is sufficient
+      const inTags        = tags.some((t) => (t ?? '').toLowerCase().includes(lowerQuery))
+
+      if (!inName && !inDescription && !inTags) return false
+    }
+
+    if (hasTag) {
+      // Exact-match: the tag string must appear verbatim in the tags array
+      if (!tags.includes(normalisedTag)) return false
+    }
+
+    return true
+  })
+}

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { normaliseProduct } from './products'
+import { normaliseProduct, filterProducts } from './products'
 
 // ---------------------------------------------------------------------------
 // Fixtures
@@ -194,5 +194,365 @@ describe('normaliseProduct — CartContext shape alignment', () => {
       // image_url is string | null per shared types
       image_url: expect.anything(),
     })
+  })
+})
+
+// ---------------------------------------------------------------------------
+// filterProducts — fixtures
+// ---------------------------------------------------------------------------
+
+/** Canonical product catalogue used across all filterProducts tests. */
+const catalogue = [
+  {
+    id: '1',
+    name: 'Almond Croissant',
+    description: 'A flaky pastry with almond filling',
+    price: 400,
+    image_url: null,
+    tags: ['bakery', 'pastry', 'nuts'],
+    is_available: true,
+  },
+  {
+    id: '2',
+    name: 'Blueberry Muffin',
+    description: 'Soft muffin loaded with blueberries',
+    price: 300,
+    image_url: null,
+    tags: ['bakery', 'muffin'],
+    is_available: true,
+  },
+  {
+    id: '3',
+    name: 'Green Tea Latte',
+    description: 'Matcha latte with oat milk',
+    price: 500,
+    image_url: null,
+    tags: ['drinks', 'matcha'],
+    is_available: true,
+  },
+  {
+    id: '4',
+    name: 'Sourdough Loaf',
+    description: 'Classic sourdough baked daily',
+    price: 800,
+    image_url: null,
+    tags: ['bakery', 'bread'],
+    is_available: false,
+  },
+  {
+    id: '5',
+    name: 'Vanilla Latte',
+    description: 'Espresso with vanilla syrup and steamed milk',
+    price: 480,
+    image_url: null,
+    tags: ['drinks', 'coffee'],
+    is_available: true,
+  },
+]
+
+// ---------------------------------------------------------------------------
+// 6. filterProducts — no filters (pass-through)
+// ---------------------------------------------------------------------------
+
+describe('filterProducts — no filters', () => {
+  it('returns the original array reference when no filters object is supplied', () => {
+    const result = filterProducts(catalogue)
+    expect(result).toBe(catalogue) // identity check — no unnecessary copy
+  })
+
+  it('returns the original array reference when both query and tag are undefined', () => {
+    const result = filterProducts(catalogue, {})
+    expect(result).toBe(catalogue)
+  })
+
+  it('returns the original array reference when query is null and tag is null', () => {
+    const result = filterProducts(catalogue, { query: null, tag: null })
+    expect(result).toBe(catalogue)
+  })
+
+  it('returns the original array reference when query is empty string and tag is empty string', () => {
+    const result = filterProducts(catalogue, { query: '', tag: '' })
+    expect(result).toBe(catalogue)
+  })
+
+  it('returns the original array reference when query is whitespace-only', () => {
+    // Whitespace-only is treated as empty — no filter applied
+    const result = filterProducts(catalogue, { query: '   ', tag: '' })
+    expect(result).toBe(catalogue)
+  })
+
+  it('returns all products when the input array is empty', () => {
+    const result = filterProducts([], { query: 'anything' })
+    expect(result).toEqual([])
+  })
+})
+
+// ---------------------------------------------------------------------------
+// 7. filterProducts — query only
+// ---------------------------------------------------------------------------
+
+describe('filterProducts — query only (name match)', () => {
+  it('matches products whose name contains the query (case-insensitive)', () => {
+    const result = filterProducts(catalogue, { query: 'muffin' })
+    expect(result.map((p) => p.id)).toEqual(['2'])
+  })
+
+  it('match is case-insensitive — uppercase query works', () => {
+    const result = filterProducts(catalogue, { query: 'MUFFIN' })
+    expect(result.map((p) => p.id)).toEqual(['2'])
+  })
+
+  it('match is case-insensitive — mixed-case query works', () => {
+    const result = filterProducts(catalogue, { query: 'MuFfIn' })
+    expect(result.map((p) => p.id)).toEqual(['2'])
+  })
+
+  it('matches by partial substring in name', () => {
+    // "latte" appears in both Green Tea Latte and Vanilla Latte
+    const result = filterProducts(catalogue, { query: 'latte' })
+    expect(result.map((p) => p.id).sort()).toEqual(['3', '5'])
+  })
+
+  it('returns empty array when no name matches', () => {
+    const result = filterProducts(catalogue, { query: 'xyz-no-match' })
+    expect(result).toEqual([])
+  })
+})
+
+describe('filterProducts — query only (description match)', () => {
+  it('matches products whose description contains the query', () => {
+    // "matcha" only in Green Tea Latte description
+    const result = filterProducts(catalogue, { query: 'matcha' })
+    expect(result.map((p) => p.id)).toEqual(['3'])
+  })
+
+  it('description match is case-insensitive', () => {
+    const result = filterProducts(catalogue, { query: 'MATCHA' })
+    expect(result.map((p) => p.id)).toEqual(['3'])
+  })
+
+  it('matches when query appears in description but not in name', () => {
+    // "blueberries" is in the description of Blueberry Muffin but not in the name itself
+    const result = filterProducts(catalogue, { query: 'blueberries' })
+    expect(result.map((p) => p.id)).toEqual(['2'])
+  })
+})
+
+describe('filterProducts — query only (tags match)', () => {
+  it('matches products whose tags array contains an element with the query as a substring', () => {
+    // "nut" is a substring of "nuts" tag on Almond Croissant
+    const result = filterProducts(catalogue, { query: 'nut' })
+    expect(result.map((p) => p.id)).toEqual(['1'])
+  })
+
+  it('tag substring match is case-insensitive', () => {
+    const result = filterProducts(catalogue, { query: 'NUT' })
+    expect(result.map((p) => p.id)).toEqual(['1'])
+  })
+
+  it('matches multiple products when query substring hits different tag elements', () => {
+    // "matcha" appears as a tag on Green Tea Latte
+    const result = filterProducts(catalogue, { query: 'matcha' })
+    expect(result.map((p) => p.id)).toEqual(['3'])
+  })
+
+  it('matches product where query is the full tag string', () => {
+    // "bread" is an exact tag on Sourdough Loaf
+    const result = filterProducts(catalogue, { query: 'bread' })
+    expect(result.map((p) => p.id)).toEqual(['4'])
+  })
+
+  it('returns empty array when no tag substring matches', () => {
+    const result = filterProducts(catalogue, { query: 'zzzz' })
+    expect(result).toEqual([])
+  })
+})
+
+describe('filterProducts — query matches across multiple fields', () => {
+  it('returns a product matched by name even if description and tags do not match', () => {
+    const result = filterProducts(catalogue, { query: 'Vanilla' })
+    expect(result.map((p) => p.id)).toEqual(['5'])
+  })
+
+  it('a query that matches both name and description still returns the product once', () => {
+    // "sourdough" appears in both the name and description of product 4
+    const result = filterProducts(catalogue, { query: 'sourdough' })
+    expect(result.map((p) => p.id)).toEqual(['4'])
+    expect(result).toHaveLength(1)
+  })
+
+  it('returns multiple products when query matches different fields on different products', () => {
+    // "bakery" is a tag on products 1, 2, 4
+    const result = filterProducts(catalogue, { query: 'bakery' })
+    expect(result.map((p) => p.id).sort()).toEqual(['1', '2', '4'])
+  })
+})
+
+// ---------------------------------------------------------------------------
+// 8. filterProducts — tag only
+// ---------------------------------------------------------------------------
+
+describe('filterProducts — tag only (exact match)', () => {
+  it('returns products whose tags array contains an exact match for the tag', () => {
+    const result = filterProducts(catalogue, { tag: 'bakery' })
+    expect(result.map((p) => p.id).sort()).toEqual(['1', '2', '4'])
+  })
+
+  it('returns only products with the exact tag — no substring matching for tag', () => {
+    // "bake" is NOT an exact tag — should return nothing
+    const result = filterProducts(catalogue, { tag: 'bake' })
+    expect(result).toEqual([])
+  })
+
+  it('tag match is case-SENSITIVE — wrong case returns empty', () => {
+    // tags stored as lowercase; 'Bakery' should NOT match 'bakery'
+    const result = filterProducts(catalogue, { tag: 'Bakery' })
+    expect(result).toEqual([])
+  })
+
+  it('returns correct products for a specific tag', () => {
+    const result = filterProducts(catalogue, { tag: 'drinks' })
+    expect(result.map((p) => p.id).sort()).toEqual(['3', '5'])
+  })
+
+  it('returns a single product when only one has the tag', () => {
+    const result = filterProducts(catalogue, { tag: 'coffee' })
+    expect(result.map((p) => p.id)).toEqual(['5'])
+  })
+
+  it('returns empty array when no product has the exact tag', () => {
+    const result = filterProducts(catalogue, { tag: 'vegan' })
+    expect(result).toEqual([])
+  })
+
+  it('null tag is treated as no filter — returns all products', () => {
+    const result = filterProducts(catalogue, { tag: null })
+    expect(result).toBe(catalogue)
+  })
+
+  it('empty-string tag is treated as no filter — returns all products', () => {
+    const result = filterProducts(catalogue, { tag: '' })
+    expect(result).toBe(catalogue)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// 9. filterProducts — query AND tag (ANDed)
+// ---------------------------------------------------------------------------
+
+describe('filterProducts — query AND tag combined (AND logic)', () => {
+  it('returns products matching BOTH query and tag', () => {
+    // query "almond" matches Almond Croissant by name; tag "bakery" also matches it
+    const result = filterProducts(catalogue, { query: 'almond', tag: 'bakery' })
+    expect(result.map((p) => p.id)).toEqual(['1'])
+  })
+
+  it('returns empty when query matches but tag does not', () => {
+    // Almond Croissant matches query "almond" but does NOT have tag "drinks"
+    const result = filterProducts(catalogue, { query: 'almond', tag: 'drinks' })
+    expect(result).toEqual([])
+  })
+
+  it('returns empty when tag matches but query does not', () => {
+    // tag "bakery" matches 3 products, but query "latte" only matches drinks
+    const result = filterProducts(catalogue, { query: 'latte', tag: 'bakery' })
+    expect(result).toEqual([])
+  })
+
+  it('returns intersection when multiple products satisfy both conditions', () => {
+    // query "latte" matches products 3 and 5; tag "drinks" matches products 3 and 5 — full overlap
+    const result = filterProducts(catalogue, { query: 'latte', tag: 'drinks' })
+    expect(result.map((p) => p.id).sort()).toEqual(['3', '5'])
+  })
+
+  it('returns only the subset satisfying both when query is broader than tag', () => {
+    // query "a" would match many, tag "matcha" limits to product 3 only
+    const result = filterProducts(catalogue, { query: 'a', tag: 'matcha' })
+    expect(result.map((p) => p.id)).toEqual(['3'])
+  })
+
+  it('null query with a valid tag behaves as tag-only filter', () => {
+    const tagOnly   = filterProducts(catalogue, { tag: 'bakery' })
+    const nullQuery = filterProducts(catalogue, { query: null, tag: 'bakery' })
+    expect(nullQuery).toEqual(tagOnly)
+  })
+
+  it('null tag with a valid query behaves as query-only filter', () => {
+    const queryOnly = filterProducts(catalogue, { query: 'muffin' })
+    const nullTag   = filterProducts(catalogue, { query: 'muffin', tag: null })
+    expect(nullTag).toEqual(queryOnly)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// 10. filterProducts — edge cases / robustness
+// ---------------------------------------------------------------------------
+
+describe('filterProducts — edge cases', () => {
+  it('handles products with empty tags array gracefully', () => {
+    const products = [
+      { id: 'x', name: 'Ghost', description: '', price: 0, image_url: null, tags: [], is_available: true },
+    ]
+    // tag filter should not crash and should return no match
+    const result = filterProducts(products, { tag: 'bakery' })
+    expect(result).toEqual([])
+  })
+
+  it('handles products with null tags gracefully (defensive)', () => {
+    const products = [
+      { id: 'x', name: 'Ghost', description: '', price: 0, image_url: null, tags: null, is_available: true },
+    ]
+    const result = filterProducts(products, { query: 'ghost' })
+    // name matches — tags being null should not crash, just not contribute matches
+    expect(result.map((p) => p.id)).toEqual(['x'])
+  })
+
+  it('handles products with null description gracefully', () => {
+    const products = [
+      { id: 'x', name: 'Espresso', description: null, price: 0, image_url: null, tags: [], is_available: true },
+    ]
+    const result = filterProducts(products, { query: 'espresso' })
+    expect(result.map((p) => p.id)).toEqual(['x'])
+  })
+
+  it('handles null products in the array without crashing', () => {
+    // A null slot in the array should be skipped rather than throwing
+    const products = [null, catalogue[0]]
+    const result = filterProducts(products, { query: 'almond' })
+    expect(result.map((p) => p.id)).toEqual(['1'])
+  })
+
+  it('does not mutate the original array', () => {
+    const original = [...catalogue]
+    filterProducts(catalogue, { query: 'latte', tag: 'drinks' })
+    expect(catalogue).toEqual(original)
+  })
+
+  it('returns a new array instance (not the original) when a filter is active', () => {
+    const result = filterProducts(catalogue, { query: 'latte' })
+    expect(result).not.toBe(catalogue)
+  })
+
+  it('single-character query matches correctly', () => {
+    // "e" appears in many product names — just check we don't crash and get results
+    const result = filterProducts(catalogue, { query: 'e' })
+    expect(Array.isArray(result)).toBe(true)
+    expect(result.length).toBeGreaterThan(0)
+  })
+
+  it('very long query string that matches nothing returns empty array', () => {
+    const result = filterProducts(catalogue, { query: 'a'.repeat(200) })
+    expect(result).toEqual([])
+  })
+
+  it('works with an empty product catalogue', () => {
+    const result = filterProducts([], { query: 'almond', tag: 'bakery' })
+    expect(result).toEqual([])
+  })
+
+  it('is_available is not a filter dimension — returns unavailable products matching query', () => {
+    // Sourdough Loaf (id:4) is is_available:false — filter should still return it if it matches
+    const result = filterProducts(catalogue, { query: 'sourdough' })
+    expect(result.map((p) => p.id)).toEqual(['4'])
   })
 })
