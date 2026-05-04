@@ -1,169 +1,124 @@
-import { useEffect, useRef, useCallback } from 'react'
-import { useNavigate } from 'react-router-dom'
+import React from 'react'
 import { useCart } from '../context/CartContext'
-import { formatEUR } from '../lib/currency'
+import { useCartProducts } from '../hooks/useCartProducts'
 
-function QtyButton({ onClick, disabled, children, ariaLabel }) {
+function CartLineItem({ item, onRemove, onQuantityChange }) {
   return (
-    <button
-      onClick={onClick}
-      disabled={disabled}
-      aria-label={ariaLabel}
-      className="w-7 h-7 flex items-center justify-center rounded-full border border-[#e5e5e5] text-[#1a1a1a] text-base font-bold transition-colors hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-[#ff90e8]"
-    >
-      {children}
-    </button>
-  )
-}
-
-function CartItem({ item, onRemove, onUpdateQty }) {
-  return (
-    <li className="flex items-start gap-3 py-4 border-b border-[#e5e5e5] last:border-0">
-      <div className="w-16 h-16 flex-shrink-0 rounded-xl overflow-hidden bg-gray-100">
-        {item.image_url ? (
-          <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center text-gray-300 text-2xl">🖼</div>
-        )}
-      </div>
-
+    <li className="flex items-center gap-4 py-4 border-b border-gray-200">
+      {item.image_url && (
+        <img
+          src={item.image_url}
+          alt={item.name}
+          className="w-16 h-16 object-cover rounded"
+        />
+      )}
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-bold text-[#1a1a1a] truncate">{item.name}</p>
-        <p className="text-xs text-gray-500 mt-0.5">{formatEUR(item.price)} each</p>
-
-        {/* Quantity controls */}
-        <div className="flex items-center gap-2 mt-2">
-          <QtyButton
-            onClick={() => onUpdateQty(item.id, item.quantity - 1)}
-            disabled={item.quantity === 1}
-            ariaLabel={`Decrease quantity of ${item.name}`}
+        <p className="font-medium text-gray-900 truncate">{item.name}</p>
+        <p className="text-sm text-gray-500">
+          ${(item.price / 100).toFixed(2)} each
+        </p>
+        <div className="flex items-center gap-2 mt-1">
+          <button
+            onClick={() => onQuantityChange(item.id, item.quantity - 1)}
+            className="w-6 h-6 flex items-center justify-center rounded border border-gray-300 text-gray-600 hover:bg-gray-100"
+            aria-label="Decrease quantity"
           >
-            −
-          </QtyButton>
-          <span className="text-sm font-semibold text-[#1a1a1a] w-5 text-center" aria-live="polite">
-            {item.quantity}
-          </span>
-          <QtyButton
-            onClick={() => onUpdateQty(item.id, item.quantity + 1)}
-            ariaLabel={`Increase quantity of ${item.name}`}
+            –
+          </button>
+          <span className="text-sm w-6 text-center">{item.quantity}</span>
+          <button
+            onClick={() => onQuantityChange(item.id, item.quantity + 1)}
+            className="w-6 h-6 flex items-center justify-center rounded border border-gray-300 text-gray-600 hover:bg-gray-100"
+            aria-label="Increase quantity"
           >
             +
-          </QtyButton>
+          </button>
         </div>
-
-        {/* Line total */}
-        <p className="text-sm font-bold text-[#1a1a1a] mt-1">{formatEUR(item.price * item.quantity)}</p>
       </div>
-
-      <button
-        onClick={() => onRemove(item.id)}
-        aria-label={`Remove ${item.name} from cart`}
-        className="flex-shrink-0 p-1 rounded-full hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors"
-      >
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-        </svg>
-      </button>
+      <div className="text-right">
+        <p className="font-semibold text-gray-900">
+          ${((item.price * item.quantity) / 100).toFixed(2)}
+        </p>
+        <button
+          onClick={() => onRemove(item.id)}
+          className="text-xs text-red-500 hover:underline mt-1"
+          aria-label={`Remove ${item.name}`}
+        >
+          Remove
+        </button>
+      </div>
     </li>
   )
 }
 
 export default function CartDrawer({ isOpen, onClose }) {
-  const { items, total, removeItem, updateQuantity } = useCart()
-  const navigate = useNavigate()
-  const drawerRef = useRef(null)
+  const { removeItem, updateQuantity, clearCart } = useCart()
+  const { items, total, loading, error } = useCartProducts()
 
-  useEffect(() => {
-    if (!isOpen) return
-    const handleKeyDown = (e) => { if (e.key === 'Escape') onClose() }
-    document.addEventListener('keydown', handleKeyDown)
-    return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [isOpen, onClose])
-
-  useEffect(() => {
-    document.body.style.overflow = isOpen ? 'hidden' : ''
-    return () => { document.body.style.overflow = '' }
-  }, [isOpen])
-
-  const handleOverlayClick = useCallback((e) => {
-    if (drawerRef.current && !drawerRef.current.contains(e.target)) onClose()
-  }, [onClose])
-
-  const handleCheckout = () => {
-    onClose()
-    navigate('/checkout')
-  }
+  if (!isOpen) return null
 
   return (
-    <>
-      <div
-        aria-hidden={!isOpen}
-        onClick={handleOverlayClick}
-        className={`fixed inset-0 z-40 bg-black/40 transition-opacity duration-300 ${
-          isOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
-        }`}
-      />
+    <div className="fixed inset-0 z-50 flex justify-end" role="dialog" aria-modal="true" aria-label="Shopping cart">
+      {/* Backdrop */}
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
 
-      <div
-        ref={drawerRef}
-        role="dialog"
-        aria-modal="true"
-        aria-label="Shopping cart"
-        className={`fixed top-0 right-0 z-50 h-full w-full max-w-sm bg-white flex flex-col transform transition-transform duration-300 ease-in-out ${
-          isOpen ? 'translate-x-0' : 'translate-x-full'
-        }`}
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-[#e5e5e5]">
-          <h2 className="text-base font-bold text-[#1a1a1a]">Your Cart</h2>
+      <aside className="relative w-full max-w-md bg-white h-full flex flex-col shadow-xl">
+        <header className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+          <h2 className="text-lg font-semibold text-gray-900">Your Cart</h2>
           <button
             onClick={onClose}
+            className="text-gray-500 hover:text-gray-700"
             aria-label="Close cart"
-            className="p-2 rounded-full hover:bg-gray-100 text-gray-400 hover:text-[#1a1a1a] transition-colors"
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
+            ✕
           </button>
-        </div>
+        </header>
 
-        {/* Items */}
-        <div className="flex-1 overflow-y-auto px-5">
-          {items.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-center gap-3 py-16">
-              <span className="text-5xl">🛒</span>
-              <p className="text-gray-500 text-sm">Your cart is empty.<br />Browse the gallery to add items!</p>
-            </div>
-          ) : (
+        <div className="flex-1 overflow-y-auto px-6">
+          {loading && (
+            <p className="text-gray-500 text-sm mt-6">Loading cart…</p>
+          )}
+          {error && (
+            <p className="text-red-500 text-sm mt-6">Failed to load products: {error}</p>
+          )}
+          {!loading && !error && items.length === 0 && (
+            <p className="text-gray-500 text-sm mt-6">Your cart is empty.</p>
+          )}
+          {!loading && (
             <ul>
               {items.map((item) => (
-                <CartItem
+                <CartLineItem
                   key={item.id}
                   item={item}
                   onRemove={removeItem}
-                  onUpdateQty={updateQuantity}
+                  onQuantityChange={updateQuantity}
                 />
               ))}
             </ul>
           )}
         </div>
 
-        {/* Footer */}
-        {items.length > 0 && (
-          <div className="border-t border-[#e5e5e5] px-5 py-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-500 font-medium">Total</span>
-              <span className="text-base font-bold text-[#1a1a1a]" aria-live="polite">{formatEUR(total)}</span>
-            </div>
-            <button
-              onClick={handleCheckout}
-              className="w-full bg-[#ff90e8] text-[#1a1a1a] py-3 rounded-full font-bold hover:opacity-80 active:scale-95 transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#ff90e8]"
-            >
-              Go to Checkout
-            </button>
+        <footer className="px-6 py-4 border-t border-gray-200">
+          <div className="flex justify-between mb-4">
+            <span className="font-medium text-gray-700">Subtotal</span>
+            <span className="font-semibold text-gray-900">
+              ${(total / 100).toFixed(2)}
+            </span>
           </div>
-        )}
-      </div>
-    </>
+          <button
+            onClick={onClose}
+            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 rounded-lg transition-colors mb-2"
+          >
+            Checkout
+          </button>
+          <button
+            onClick={clearCart}
+            className="w-full text-sm text-gray-500 hover:text-gray-700 underline"
+          >
+            Clear cart
+          </button>
+        </footer>
+      </aside>
+    </div>
   )
 }

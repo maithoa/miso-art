@@ -8,7 +8,7 @@ const ISSUES_DIR = "./.scratch/miso-art-mvp/issues";
 const PRD_PATH = "./.scratch/miso-art-mvp/PRD.md";
 
 // Manually track done issues here as you complete them
-const DONE_ISSUES = ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12", "14", "15", "16", "17", "18", "19", "21"];
+const DONE_ISSUES = ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12", "14", "15", "16", "17", "18", "19", "20", "21"];
 
 export function loadProjectContext() {
   const prd = fs.readFileSync(PRD_PATH, "utf8");

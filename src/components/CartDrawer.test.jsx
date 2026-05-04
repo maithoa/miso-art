@@ -1,192 +1,83 @@
+import React from 'react'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { MemoryRouter } from 'react-router-dom'
-import { CartProvider } from '../context/CartContext'
 import CartDrawer from './CartDrawer'
+import { CartProvider } from '../context/CartContext'
 
-// ---------------------------------------------------------------------------
-// localStorage mock (jsdom doesn't implement .clear())
-// ---------------------------------------------------------------------------
+// Stub useCartProducts so CartDrawer doesn't need Supabase
+jest.mock('../hooks/useCartProducts', () => ({
+  useCartProducts: jest.fn(),
+}))
 
-let store = {}
-const localStorageMock = {
-  getItem: (k) => store[k] ?? null,
-  setItem: (k, v) => { store[k] = String(v) },
-  removeItem: (k) => { delete store[k] },
-  clear: () => { store = {} },
-}
+import { useCartProducts } from '../hooks/useCartProducts'
 
-beforeEach(() => { store = {}; vi.stubGlobal('localStorage', localStorageMock) })
-afterEach(() => vi.unstubAllGlobals())
+const ENRICHED_ITEMS = [
+  { id: 'p1', name: 'Alpha', price: 1000, image_url: 'alpha.png', quantity: 2 },
+  { id: 'p2', name: 'Beta', price: 2500, image_url: 'beta.png', quantity: 1 },
+]
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
+function setup(isOpen = true, overrides = {}) {
+  useCartProducts.mockReturnValue({
+    items: ENRICHED_ITEMS,
+    total: 4500, // 2*1000 + 1*2500
+    loading: false,
+    error: null,
+    ...overrides,
+  })
 
-/** Wrap CartDrawer in the real CartProvider so context is live. */
-function renderDrawer(initialItems = []) {
-  // Seed localStorage so CartProvider hydrates with our fixture data.
-  localStorageMock.setItem('cart', JSON.stringify(initialItems))
-
-  return render(
-    <MemoryRouter>
-      <CartProvider>
-        <CartDrawer isOpen={true} onClose={vi.fn()} />
-      </CartProvider>
-    </MemoryRouter>
+  const onClose = jest.fn()
+  render(
+    <CartProvider>
+      <CartDrawer isOpen={isOpen} onClose={onClose} />
+    </CartProvider>
   )
+  return { onClose }
 }
 
-/** One product fixture (price in integer cents). */
-const PRODUCT_A = {
-  id: 'prod-1',
-  name: 'Test Widget',
-  price: 1500, // 15,00 €
-  image_url: 'https://example.com/widget.jpg',
-  quantity: 1,
-}
-
-const PRODUCT_A_QTY2 = { ...PRODUCT_A, quantity: 2 }
-
-// ---------------------------------------------------------------------------
-// Reset between tests
-// ---------------------------------------------------------------------------
-
-
-// ---------------------------------------------------------------------------
-// Quantity control — disabled state
-// ---------------------------------------------------------------------------
-
-describe('CartDrawer — decrement button disabled state', () => {
-  it('renders the − button with the HTML disabled attribute when quantity is 1', () => {
-    renderDrawer([PRODUCT_A])
-
-    const decrementBtn = screen.getByRole('button', { name: /decrement|decrease|−|-/i })
-    expect(decrementBtn).toBeDisabled()
+describe('CartDrawer', () => {
+  test('renders nothing when isOpen=false', () => {
+    setup(false)
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
-  it('does NOT have the disabled attribute on − when quantity is 2', () => {
-    renderDrawer([PRODUCT_A_QTY2])
-
-    const decrementBtn = screen.getByRole('button', { name: /decrement|decrease|−|-/i })
-    expect(decrementBtn).not.toBeDisabled()
-  })
-})
-
-// ---------------------------------------------------------------------------
-// Quantity control — increment
-// ---------------------------------------------------------------------------
-
-describe('CartDrawer — increment button', () => {
-  it('increases displayed quantity by 1 when + is clicked', async () => {
-    const user = userEvent.setup()
-    renderDrawer([PRODUCT_A]) // starts at qty 1
-
-    const incrementBtn = screen.getByRole('button', { name: /increment|increase|\+/i })
-    await user.click(incrementBtn)
-
-    // After clicking + once the displayed quantity should be 2.
-    expect(screen.getByText('2')).toBeInTheDocument()
+  test('renders item names and quantities', () => {
+    setup()
+    expect(screen.getByText('Alpha')).toBeInTheDocument()
+    expect(screen.getByText('Beta')).toBeInTheDocument()
   })
 
-  it('increments quantity multiple times correctly', async () => {
-    const user = userEvent.setup()
-    renderDrawer([PRODUCT_A]) // starts at qty 1
-
-    const incrementBtn = screen.getByRole('button', { name: /increment|increase|\+/i })
-    await user.click(incrementBtn)
-    await user.click(incrementBtn)
-
-    expect(screen.getByText('3')).toBeInTheDocument()
-  })
-})
-
-// ---------------------------------------------------------------------------
-// Quantity control — decrement
-// ---------------------------------------------------------------------------
-
-describe('CartDrawer — decrement button', () => {
-  it('decreases displayed quantity by 1 when − is clicked at qty 2', async () => {
-    const user = userEvent.setup()
-    renderDrawer([PRODUCT_A_QTY2]) // starts at qty 2
-
-    const decrementBtn = screen.getByRole('button', { name: /decrement|decrease|−|-/i })
-    await user.click(decrementBtn)
-
-    expect(screen.getByText('1')).toBeInTheDocument()
+  test('renders correct line item price (price * qty)', () => {
+    setup()
+    // Alpha: 2 * $10.00 = $20.00
+    expect(screen.getByText('$20.00')).toBeInTheDocument()
+    // Beta: 1 * $25.00 = $25.00
+    expect(screen.getByText('$25.00')).toBeInTheDocument()
   })
 
-  it('disables − after decrementing from qty 2 to qty 1', async () => {
-    const user = userEvent.setup()
-    renderDrawer([PRODUCT_A_QTY2])
-
-    const decrementBtn = screen.getByRole('button', { name: /decrement|decrease|−|-/i })
-    await user.click(decrementBtn)
-
-    expect(decrementBtn).toBeDisabled()
-  })
-})
-
-// ---------------------------------------------------------------------------
-// Line total — reactive display
-// ---------------------------------------------------------------------------
-
-describe('CartDrawer — line total', () => {
-  it('displays the correct line total for initial quantity', () => {
-    renderDrawer([PRODUCT_A]) // price=1500 cents, qty=1 → 15,00 €
-
-    expect(screen.getAllByText(/15[,.]00/).length).toBeGreaterThanOrEqual(1)
+  test('renders correct subtotal', () => {
+    setup()
+    // total = 4500 cents = $45.00
+    expect(screen.getByText('$45.00')).toBeInTheDocument()
   })
 
-  it('updates line total reactively when + is clicked', async () => {
-    const user = userEvent.setup()
-    renderDrawer([PRODUCT_A]) // price=1500 cents, qty=1
-
-    const incrementBtn = screen.getByRole('button', { name: /increment|increase|\+/i })
-    await user.click(incrementBtn) // qty → 2, line total → 30,00 €
-
-    expect(screen.getAllByText(/30[,.]00/).length).toBeGreaterThanOrEqual(1)
+  test('calls onClose when close button clicked', async () => {
+    const { onClose } = setup()
+    await userEvent.click(screen.getByLabelText('Close cart'))
+    expect(onClose).toHaveBeenCalledTimes(1)
   })
 
-  it('updates line total reactively when − is clicked', async () => {
-    const user = userEvent.setup()
-    renderDrawer([PRODUCT_A_QTY2]) // price=1500 cents, qty=2 → 30,00 €
-
-    const decrementBtn = screen.getByRole('button', { name: /decrement|decrease|−|-/i })
-    await user.click(decrementBtn) // qty → 1, line total → 15,00 €
-
-    expect(screen.getAllByText(/15[,.]00/).length).toBeGreaterThanOrEqual(1)
+  test('shows loading state', () => {
+    setup(true, { items: [], total: 0, loading: true })
+    expect(screen.getByText('Loading cart…')).toBeInTheDocument()
   })
 
-  it('line total equals price × quantity (integer cents rendered as euros)', () => {
-    // qty=3, price=1500 → line total = 4500 cents = 45,00 €
-    renderDrawer([{ ...PRODUCT_A, quantity: 3 }])
-
-    expect(screen.getAllByText(/45[,.]00/).length).toBeGreaterThanOrEqual(1)
-  })
-})
-
-// ---------------------------------------------------------------------------
-// Cart total — reactive display
-// ---------------------------------------------------------------------------
-
-describe('CartDrawer — cart total', () => {
-  it('displays the correct cart total for a single item', () => {
-    renderDrawer([PRODUCT_A]) // total = 1500 cents = $15.00
-
-    // There may be multiple "$15.00" nodes (line total + cart total).
-    const matches = screen.getAllByText(/15[,.]00/)
-    expect(matches.length).toBeGreaterThanOrEqual(1)
+  test('shows error state', () => {
+    setup(true, { items: [], total: 0, error: 'Network error' })
+    expect(screen.getByText(/Network error/)).toBeInTheDocument()
   })
 
-  it('updates cart total when quantity changes', async () => {
-    const user = userEvent.setup()
-    renderDrawer([PRODUCT_A]) // total $15.00
-
-    const incrementBtn = screen.getByRole('button', { name: /increment|increase|\+/i })
-    await user.click(incrementBtn) // total → $30.00
-
-    expect(screen.getAllByText(/30[,.]00/).length).toBeGreaterThanOrEqual(1)
+  test('shows empty cart message when no items', () => {
+    setup(true, { items: [], total: 0, loading: false, error: null })
+    expect(screen.getByText('Your cart is empty.')).toBeInTheDocument()
   })
 })

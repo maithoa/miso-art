@@ -1,45 +1,50 @@
-import { createContext, useContext, useState, useEffect } from 'react'
+import React, { createContext, useContext, useState, useCallback } from 'react'
 
 const CartContext = createContext(null)
 
-function loadCart() {
-  try {
-    const stored = localStorage.getItem('cart')
-    return stored ? JSON.parse(stored) : []
-  } catch {
-    return []
-  }
-}
-
 export function CartProvider({ children }) {
-  const [items, setItems] = useState(loadCart)
+  // Items stored as lean shape: [{ id, quantity }]
+  const [items, setItems] = useState([])
 
-  useEffect(() => {
-    localStorage.setItem('cart', JSON.stringify(items))
-  }, [items])
-
-  const addItem = (product, quantity = 1) => {
-    setItems(prev => {
-      const existing = prev.find(i => i.id === product.id)
+  // Accepts full product object but discards everything except id
+  const addItem = useCallback((product) => {
+    const { id } = product
+    setItems((prev) => {
+      const existing = prev.find((item) => item.id === id)
       if (existing) {
-        return prev.map(i => i.id === product.id ? { ...i, quantity: i.quantity + quantity } : i)
+        return prev.map((item) =>
+          item.id === id ? { id, quantity: item.quantity + 1 } : item
+        )
       }
-      return [...prev, { ...product, quantity }]
+      return [...prev, { id, quantity: 1 }]
     })
-  }
-  const removeItem = (productId) => {
-    setItems(prev => prev.filter(i => i.id !== productId))
-  }
-  const updateQuantity = (productId, quantity) => {
-    if (quantity <= 0) return removeItem(productId)
-    setItems(prev => prev.map(i => i.id === productId ? { ...i, quantity } : i))
-  }
-  const clearCart = () => setItems([])
+  }, [])
 
-  const total = items.reduce((sum, item) => sum + item.price * item.quantity, 0)
+  const removeItem = useCallback((id) => {
+    setItems((prev) => prev.filter((item) => item.id !== id))
+  }, [])
+
+  const updateQuantity = useCallback((id, quantity) => {
+    if (quantity <= 0) {
+      setItems((prev) => prev.filter((item) => item.id !== id))
+    } else {
+      setItems((prev) =>
+        prev.map((item) => (item.id === id ? { id, quantity } : item))
+      )
+    }
+  }, [])
+
+  const clearCart = useCallback(() => {
+    setItems([])
+  }, [])
+
+  // Total count of individual units in cart
+  const itemCount = items.reduce((sum, item) => sum + item.quantity, 0)
 
   return (
-    <CartContext.Provider value={{ items, total, addItem, removeItem, updateQuantity, clearCart }}>
+    <CartContext.Provider
+      value={{ items, addItem, removeItem, updateQuantity, clearCart, itemCount }}
+    >
       {children}
     </CartContext.Provider>
   )
@@ -47,6 +52,6 @@ export function CartProvider({ children }) {
 
 export function useCart() {
   const ctx = useContext(CartContext)
-  if (!ctx) throw new Error('useCart must be used within CartProvider')
+  if (!ctx) throw new Error('useCart must be used within a CartProvider')
   return ctx
 }
