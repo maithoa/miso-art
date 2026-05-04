@@ -4,6 +4,7 @@ import AdminRoute from '../../components/AdminRoute';
 import StatusBadge from '../../components/StatusBadge';
 import { supabase } from '../../lib/supabase';
 import { formatEUR } from '../../lib/currency';
+import { useAdminMutation } from '../../hooks/useAdminMutation';
 
 function AdminOrderDetailInner() {
   const { id } = useParams();
@@ -11,8 +12,10 @@ function AdminOrderDetailInner() {
   const [order, setOrder] = useState(null);
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [actionLoading, setActionLoading] = useState(false);
+  const [fetchError, setFetchError] = useState(null);
+
+  // single mutation hook for all status transition actions
+  const { mutate, loading: actionLoading, error: actionError, clearError } = useAdminMutation();
 
   const fetchOrder = async () => {
     const { data: orderData, error: orderError } = await supabase
@@ -20,14 +23,14 @@ function AdminOrderDetailInner() {
       .select('*')
       .eq('id', id)
       .single();
-    if (orderError) { setError(orderError.message); setLoading(false); return; }
+    if (orderError) { setFetchError(orderError.message); setLoading(false); return; }
 
     // join order_items with product name
     const { data: itemsData, error: itemsError } = await supabase
       .from('order_items')
       .select('id, quantity, price_at_purchase, product_id, products(name)')
       .eq('order_id', id);
-    if (itemsError) { setError(itemsError.message); setLoading(false); return; }
+    if (itemsError) { setFetchError(itemsError.message); setLoading(false); return; }
 
     setOrder(orderData);
     setItems(itemsData);
@@ -36,20 +39,22 @@ function AdminOrderDetailInner() {
 
   useEffect(() => { fetchOrder(); }, [id]);
 
-  const updateStatus = async (newStatus) => {
-    setActionLoading(true);
-    // optimistic update
-    setOrder((prev) => ({ ...prev, status: newStatus }));
-    const { error } = await supabase
-      .from('orders')
-      .update({ status: newStatus })
-      .eq('id', id);
-    if (error) {
-      setError(error.message);
-      // revert optimistic update on failure
-      setOrder((prev) => ({ ...prev, status: order.status }));
-    }
-    setActionLoading(false);
+  const updateStatus = (newStatus) => {
+    // capture previous status for rollback before mutating state
+    const prevStatus = order?.status;
+    mutate(async () => {
+      // optimistic update
+      setOrder((prev) => ({ ...prev, status: newStatus }));
+      const { error } = await supabase
+        .from('orders')
+        .update({ status: newStatus })
+        .eq('id', id);
+      if (error) {
+        // revert optimistic update on failure
+        setOrder((prev) => ({ ...prev, status: prevStatus }));
+        throw new Error(error.message);
+      }
+    });
   };
 
   if (loading) return (
@@ -58,9 +63,9 @@ function AdminOrderDetailInner() {
     </div>
   );
 
-  if (error) return (
+  if (fetchError) return (
     <div className="min-h-screen flex items-center justify-center">
-      <p className="text-red-600">Error: {error}</p>
+      <p className="text-red-600">Error: {fetchError}</p>
     </div>
   );
 
@@ -131,6 +136,14 @@ function AdminOrderDetailInner() {
             </tfoot>
           </table>
         </div>
+
+        {/* action error banner with dismiss */}
+        {actionError && (
+          <div className="flex items-center justify-between bg-red-50 border border-red-200 rounded-lg px-4 py-2">
+            <p className="text-sm text-red-600">Action failed: {actionError}</p>
+            <button onClick={clearError} className="text-red-400 hover:text-red-600 text-xs ml-4">Dismiss</button>
+          </div>
+        )}
 
         <div className="bg-white rounded-xl shadow p-6 flex items-center gap-4">
           {order.status === 'payment_confirmed' && (

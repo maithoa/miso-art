@@ -3,13 +3,18 @@ import AdminRoute from '../../components/AdminRoute';
 import ProductForm from '../../components/ProductForm';
 import { supabase } from '../../lib/supabase';
 import { formatEUR } from '../../lib/currency';
+import { useAdminMutation } from '../../hooks/useAdminMutation';
 
 function AdminProductsInner() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [formProduct, setFormProduct] = useState(null); // null=closed, {}=new, product=edit
+  const [formProduct, setFormProduct] = useState(null);
   const [showForm, setShowForm] = useState(false);
+
+  // separate mutation hook instances for toggle and delete
+  const { mutate: mutateToggle, loading: toggleLoading, error: toggleError, clearError: clearToggleError } = useAdminMutation();
+  const { mutate: mutateDelete, loading: deleteLoading, error: deleteError, clearError: clearDeleteError } = useAdminMutation();
 
   useEffect(() => {
     (async () => {
@@ -37,31 +42,35 @@ function AdminProductsInner() {
     closeForm();
   };
 
-  const toggleAvailability = async (product) => {
-    const newVal = !product.is_available;
-    // optimistic update
-    setProducts((prev) => prev.map((p) => p.id === product.id ? { ...p, is_available: newVal } : p));
-    const { error } = await supabase
-      .from('products')
-      .update({ is_available: newVal })
-      .eq('id', product.id);
-    if (error) {
-      // revert on failure
-      setProducts((prev) => prev.map((p) => p.id === product.id ? { ...p, is_available: product.is_available } : p));
-      alert(error.message);
-    }
+  const toggleAvailability = (product) => {
+    mutateToggle(async () => {
+      const newVal = !product.is_available;
+      // optimistic update
+      setProducts((prev) => prev.map((p) => p.id === product.id ? { ...p, is_available: newVal } : p));
+      const { error } = await supabase
+        .from('products')
+        .update({ is_available: newVal })
+        .eq('id', product.id);
+      if (error) {
+        // revert on failure
+        setProducts((prev) => prev.map((p) => p.id === product.id ? { ...p, is_available: product.is_available } : p));
+        throw new Error(error.message);
+      }
+    });
   };
 
-  const deleteProduct = async (product) => {
+  const deleteProduct = (product) => {
     if (!window.confirm(`Delete "${product.name}"? This cannot be undone.`)) return;
-    // remove immediately
-    setProducts((prev) => prev.filter((p) => p.id !== product.id));
-    const { error } = await supabase.from('products').delete().eq('id', product.id);
-    if (error) {
-      // restore on failure
-      setProducts((prev) => [...prev, product].sort((a, b) => a.name.localeCompare(b.name)));
-      alert(error.message);
-    }
+    mutateDelete(async () => {
+      // remove immediately (optimistic)
+      setProducts((prev) => prev.filter((p) => p.id !== product.id));
+      const { error } = await supabase.from('products').delete().eq('id', product.id);
+      if (error) {
+        // restore on failure
+        setProducts((prev) => [...prev, product].sort((a, b) => a.name.localeCompare(b.name)));
+        throw new Error(error.message);
+      }
+    });
   };
 
   if (loading) return (
@@ -85,6 +94,20 @@ function AdminProductsInner() {
           + Add Product
         </button>
       </div>
+
+      {/* show mutation errors inline above the table */}
+      {toggleError && (
+        <div className="mb-4 flex items-center justify-between bg-red-50 border border-red-200 rounded-lg px-4 py-2">
+          <p className="text-sm text-red-600">Toggle failed: {toggleError}</p>
+          <button onClick={clearToggleError} className="text-red-400 hover:text-red-600 text-xs ml-4">Dismiss</button>
+        </div>
+      )}
+      {deleteError && (
+        <div className="mb-4 flex items-center justify-between bg-red-50 border border-red-200 rounded-lg px-4 py-2">
+          <p className="text-sm text-red-600">Delete failed: {deleteError}</p>
+          <button onClick={clearDeleteError} className="text-red-400 hover:text-red-600 text-xs ml-4">Dismiss</button>
+        </div>
+      )}
 
       {products.length === 0 ? (
         <p className="text-gray-500">No products yet.</p>
@@ -118,9 +141,11 @@ function AdminProductsInner() {
                   </td>
                   <td className="px-4 py-3 text-right text-gray-900">{formatEUR(product.price)}</td>
                   <td className="px-4 py-3 text-center">
-                    {/* inline toggle — calls supabase immediately */}
-                    <button onClick={() => toggleAvailability(product)}
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                    {/* disabled during any toggle operation to prevent double-fire */}
+                    <button
+                      onClick={() => toggleAvailability(product)}
+                      disabled={toggleLoading}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors disabled:opacity-60 ${
                         product.is_available ? 'bg-indigo-600' : 'bg-gray-300'
                       }`}>
                       <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
@@ -132,8 +157,12 @@ function AdminProductsInner() {
                     <div className="flex items-center justify-end gap-2">
                       <button onClick={() => openEdit(product)}
                         className="px-3 py-1.5 border rounded-lg text-xs hover:bg-gray-50">Edit</button>
-                      <button onClick={() => deleteProduct(product)}
-                        className="px-3 py-1.5 border border-red-200 text-red-600 rounded-lg text-xs hover:bg-red-50">Delete</button>
+                      <button
+                        onClick={() => deleteProduct(product)}
+                        disabled={deleteLoading}
+                        className="px-3 py-1.5 border border-red-200 text-red-600 rounded-lg text-xs hover:bg-red-50 disabled:opacity-50">
+                        Delete
+                      </button>
                     </div>
                   </td>
                 </tr>
