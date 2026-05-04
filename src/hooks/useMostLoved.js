@@ -7,10 +7,14 @@ import { supabase } from '../lib/supabase'
  * Queries the most_loved_products view, ordered by total_sold desc.
  * Returns top products (all rows in the view, sorted by popularity).
  *
- * @returns {{ products: MostLovedProduct[], loading: boolean, error: string|null }}
+ * Hook is intentionally pure — it does NOT import ToastContext or any
+ * UI-layer concern. Callers are responsible for surfacing the error field.
+ *
+ * @returns {{ products: MostLovedProduct[] | null, loading: boolean, error: string | null }}
  */
 export function useMostLoved() {
-  const [products, setProducts] = useState([])
+  // null initial state lets callers distinguish "not yet fetched" from "empty"
+  const [products, setProducts] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
@@ -30,7 +34,9 @@ export function useMostLoved() {
       if (cancelled) return
 
       if (fetchError) {
-        console.error('[useMostLoved] fetch error:', fetchError.message)
+        // NOTE: Do NOT call console.error here — callers surface errors via the
+        // returned error field. Keeping the hook pure makes it unit-testable
+        // without mocking any UI context.
         setError(fetchError.message)
         setProducts([])
       } else {
