@@ -1,10 +1,12 @@
-import { useState, useMemo } from 'react'
 import { useProducts } from '../hooks/useProducts'
+import { useGalleryFilter } from '../hooks/useGalleryFilter'
 import ProductCard from '../components/ProductCard'
 import MostLoved from '../components/MostLoved'
 import SeasonalBanner from '../components/SeasonalBanner'
 import { SearchBar } from '../components/SearchBar'
 import { TagPills } from '../components/TagPills'
+// TODO(dev2): need filterProducts exported from src/lib/products.js with signature: filterProducts(products, { query, tag })
+import { filterProducts } from '../lib/products'
 
 function SkeletonCard() {
   return (
@@ -25,31 +27,26 @@ function SkeletonCard() {
 
 export default function Gallery() {
   const { products, loading, error } = useProducts()
-  const [search, setSearch] = useState('')
-  const [selectedTags, setSelectedTags] = useState([])
 
-  const allTags = useMemo(() => {
-    const set = new Set()
-    products.forEach(p => (p.tags || []).forEach(t => set.add(t)))
-    return Array.from(set).sort()
-  }, [products])
+  // Delegate all filter state and logic to the hook
+  const {
+    searchQuery,
+    setSearchQuery,
+    selectedTags,
+    toggleTag,
+    allTags,
+  } = useGalleryFilter(products)
 
-  const filtered = useMemo(() => {
-    return products.filter(p => {
-      const matchesSearch = !search ||
-        p.name.toLowerCase().includes(search.toLowerCase()) ||
-        (p.description || '').toLowerCase().includes(search.toLowerCase())
-      const matchesTags = selectedTags.length === 0 ||
-        selectedTags.every(t => (p.tags || []).includes(t))
-      return matchesSearch && matchesTags
-    })
-  }, [products, search, selectedTags])
-
-  function toggleTag(tag) {
-    setSelectedTags(prev =>
-      prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]
-    )
-  }
+  // Delegate filtering to filterProducts from lib — no inline filter logic here
+  // selectedTags is an array; filterProducts accepts a single tag per the shared signature,
+  // so we apply it once per selected tag by chaining, or pass the full array if dev2 supports it.
+  // Per the shared signature { query, tag } we apply each selected tag iteratively.
+  const filtered = selectedTags.length > 0
+    ? selectedTags.reduce(
+        (acc, tag) => filterProducts(acc, { query: searchQuery, tag }),
+        products
+      )
+    : filterProducts(products, { query: searchQuery, tag: null })
 
   return (
     <main className="max-w-5xl mx-auto px-4 md:px-8 py-12">
@@ -64,7 +61,7 @@ export default function Gallery() {
 
       {/* Filters */}
       <div className="flex flex-col gap-3 mb-8">
-        <SearchBar value={search} onChange={setSearch} />
+        <SearchBar value={searchQuery} onChange={setSearchQuery} />
         <TagPills tags={allTags} selectedTags={selectedTags} onToggle={toggleTag} />
       </div>
 
